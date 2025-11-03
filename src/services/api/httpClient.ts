@@ -41,12 +41,19 @@ class HttpClient {
     // For local development, use Vite proxy (empty string = relative URLs)
     if (import.meta.env.DEV && !envApiUrl) {
       this.baseURL = ''; // Use Vite proxy - requests go to http://localhost:3000/api
-      console.log('[HttpClient] DEV mode: Using Vite proxy for Flask backend');
+      if (import.meta.env.DEV) {
+        console.log('[HttpClient] DEV mode: Using Vite proxy for Flask backend');
+      }
     } else {
       this.baseURL = config?.baseURL || envApiUrl || window.location.origin;
+      if (import.meta.env.DEV) {
+        console.log('[HttpClient] Using configured API URL:', this.baseURL);
+      }
     }
 
-    console.log('[HttpClient] Final API Base URL:', this.baseURL);
+    if (import.meta.env.DEV) {
+      console.log('[HttpClient] Final API Base URL:', this.baseURL);
+    }
 
     this.client = axios.create({
       baseURL: this.baseURL,
@@ -69,7 +76,9 @@ class HttpClient {
       (config) => {
         const authHeaders = getAuthHeaders();
         Object.assign(config.headers, authHeaders);
-        console.log(`[HttpClient] ${config.method?.toUpperCase()} ${config.url}`);
+        if (import.meta.env.DEV) {
+          console.log(`[HttpClient] ${config.method?.toUpperCase()} ${config.url}`);
+        }
         return config;
       },
       (error) => {
@@ -81,7 +90,9 @@ class HttpClient {
     // Response interceptor: Handle errors consistently
     this.client.interceptors.response.use(
       (response) => {
-        console.log(`[HttpClient] Response ${response.status} from ${response.config.url}`);
+        if (import.meta.env.DEV) {
+          console.log(`[HttpClient] Response ${response.status} from ${response.config.url}`);
+        }
         return response;
       },
       (error: AxiosError) => {

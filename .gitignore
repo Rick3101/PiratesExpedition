@@ -13,6 +13,8 @@ yarn-error.log*
 dist/
 build/
 coverage/
+*.tsbuildinfo
+build.log
 
 # ============================
 # Environment files
@@ -20,6 +22,11 @@ coverage/
 .env
 .env.*
 !.env.example
+
+# ============================
+# Generated files
+# ============================
+index.html
 
 # ============================
 # IDE / OS files
