@@ -15,10 +15,15 @@ function copyPolyfillsPlugin(): Plugin {
       const dest = path.resolve(__dirname, 'dist/polyfills.js')
 
       if (fs.existsSync(src)) {
+        // Ensure dist directory exists
+        const distDir = path.dirname(dest)
+        if (!fs.existsSync(distDir)) {
+          fs.mkdirSync(distDir, { recursive: true })
+        }
         fs.copyFileSync(src, dest)
         console.log('[Vite] Copied polyfills.js to dist/')
       } else {
-        console.warn('[Vite] Warning: polyfills.js not found in public/')
+        console.warn('[Vite] Warning: polyfills.js not found in public/ - skipping copy')
       }
     }
   }
@@ -54,8 +59,8 @@ function injectPolyfillPlugin(basePath: string): Plugin {
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  // Use /webapp for Render, / for Cloudflare Pages
-  base: process.env.CF_PAGES ? '/' : '/webapp',
+  // Standalone project - always use root path
+  base: '/',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -63,7 +68,7 @@ export default defineConfig({
   },
   plugins: [
     copyPolyfillsPlugin(),
-    injectPolyfillPlugin(process.env.CF_PAGES ? '/' : '/webapp/'),
+    injectPolyfillPlugin('/'),
     react(),
     // PWA disabled for Telegram Mini Apps - service workers can interfere with Telegram's iframe
     // VitePWA({
