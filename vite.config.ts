@@ -11,19 +11,24 @@ function copyPolyfillsPlugin(): Plugin {
   return {
     name: 'copy-polyfills',
     closeBundle() {
-      const src = path.resolve(__dirname, 'public/polyfills.js')
-      const dest = path.resolve(__dirname, 'dist/polyfills.js')
+      try {
+        const src = path.resolve(__dirname, 'public/polyfills.js')
+        const dest = path.resolve(__dirname, 'dist/polyfills.js')
 
-      if (fs.existsSync(src)) {
-        // Ensure dist directory exists
-        const distDir = path.dirname(dest)
-        if (!fs.existsSync(distDir)) {
-          fs.mkdirSync(distDir, { recursive: true })
+        if (fs.existsSync(src)) {
+          // Ensure dist directory exists
+          const distDir = path.dirname(dest)
+          if (!fs.existsSync(distDir)) {
+            fs.mkdirSync(distDir, { recursive: true })
+          }
+          fs.copyFileSync(src, dest)
+          console.log('[Vite] Copied polyfills.js to dist/')
+        } else {
+          console.warn('[Vite] Warning: polyfills.js not found - skipping copy')
         }
-        fs.copyFileSync(src, dest)
-        console.log('[Vite] Copied polyfills.js to dist/')
-      } else {
-        console.warn('[Vite] Warning: polyfills.js not found in public/ - skipping copy')
+      } catch (error) {
+        // Don't fail build if polyfill copy fails
+        console.warn('[Vite] Could not copy polyfills.js:', error instanceof Error ? error.message : error)
       }
     }
   }
