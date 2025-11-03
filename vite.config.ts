@@ -26,10 +26,12 @@ function copyPolyfillsPlugin(): Plugin {
 }
 
 /**
- * Plugin to ensure polyfills are loaded first for Render deployment
+ * Plugin to ensure polyfills are loaded first for deployment
  * This is critical for Telegram Mini App environment
  */
-function injectPolyfillPlugin(): Plugin {
+function injectPolyfillPlugin(basePath: string): Plugin {
+  const polyfillPath = `${basePath}polyfills.js`.replace('//', '/')
+
   return {
     name: 'inject-polyfill-first',
     enforce: 'pre',
@@ -38,11 +40,11 @@ function injectPolyfillPlugin(): Plugin {
       handler(html: string) {
         // Ensure polyfill script is the very first script in <head>
         // This prevents "Cannot destructure 'Request' of undefined" errors
-        // in Telegram's WebView on Render
-        if (!html.includes('src="/webapp/polyfills.js"')) {
+        // in Telegram's WebView
+        if (!html.includes(`src="${polyfillPath}"`)) {
           html = html.replace(
             '<head>',
-            '<head>\n    <!-- CRITICAL: Polyfill injected by Vite for Render deployment -->\n    <script src="/webapp/polyfills.js"></script>'
+            `<head>\n    <!-- CRITICAL: Polyfill injected by Vite -->\n    <script src="${polyfillPath}"></script>`
           );
         }
         return html;
@@ -53,7 +55,8 @@ function injectPolyfillPlugin(): Plugin {
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  base: '/webapp',
+  // Use /webapp for Render, / for Cloudflare Pages
+  base: process.env.CF_PAGES ? '/' : '/webapp',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -61,7 +64,7 @@ export default defineConfig({
   },
   plugins: [
     copyPolyfillsPlugin(),
-    injectPolyfillPlugin(),
+    injectPolyfillPlugin(process.env.CF_PAGES ? '/' : '/webapp/'),
     react(),
     // PWA disabled for Telegram Mini Apps - service workers can interfere with Telegram's iframe
     // VitePWA({
