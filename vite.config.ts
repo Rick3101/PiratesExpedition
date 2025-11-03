@@ -1,6 +1,5 @@
 import { defineConfig, Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
-// import { VitePWA } from 'vite-plugin-pwa' // Disabled for Telegram Mini Apps
 import path from 'path'
 import fs from 'fs'
 
