@@ -51,7 +51,7 @@ export const transformExpeditionItems = (
     return {
       id: item.id,
       product_id: item.product_id,
-      name: item.product_name,
+      name: item.encrypted_product_name || item.product_name,
       emoji: item.product_emoji || '',
       quantity,
       price,

@@ -1,6 +1,7 @@
 import React from 'react';
 import styled from 'styled-components';
 import { AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { PirateButton } from '@/components/ui/PirateButton';
 import { ExpeditionCard } from '@/components/expedition/ExpeditionCard';
 import { pirateColors, spacing, pirateTypography } from '@/utils/pirateTheme';
@@ -31,6 +32,7 @@ const SectionTitle = styled.h2`
   display: flex;
   align-items: center;
   gap: ${spacing.sm};
+  user-select: none;
 
   @media (min-width: 640px) {
     font-size: 1.75rem;
@@ -98,10 +100,12 @@ export const ExpeditionTimeline: React.FC<ExpeditionTimelineProps> = ({
   onCreate,
   refreshing,
 }) => {
+  const navigate = useNavigate();
+
   return (
     <div>
       <SectionHeader>
-        <SectionTitle>
+        <SectionTitle onClick={() => navigate('/brambler')}>
           ⛵ Expedition Timeline
         </SectionTitle>
         <ActionButtons>

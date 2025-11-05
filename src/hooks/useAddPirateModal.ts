@@ -1,12 +1,10 @@
 import { useState, useCallback } from 'react';
 import { useModalState } from './useModalState';
-import { Buyer } from '@/types/expedition';
 
 export interface AddPirateModalReturn {
   isOpen: boolean;
   selectedName: string;
-  availableBuyers: Buyer[];
-  open: (buyers: Buyer[]) => void;
+  open: () => void;
   close: () => void;
   handleAdd: (addFn: (name: string) => Promise<void>, onSuccess: () => Promise<void>) => Promise<void>;
   setSelectedName: (name: string) => void;
@@ -17,11 +15,11 @@ export interface AddPirateModalReturn {
  * Encapsulates pirate selection and addition flow
  */
 export const useAddPirateModal = (): AddPirateModalReturn => {
-  const modal = useModalState<Buyer[]>();
+  const modal = useModalState<void>();
   const [selectedName, setSelectedName] = useState('');
 
-  const open = useCallback((buyers: Buyer[]) => {
-    modal.openModal(buyers);
+  const open = useCallback(() => {
+    modal.openModal();
     setSelectedName('');
   }, [modal]);
 
@@ -51,7 +49,6 @@ export const useAddPirateModal = (): AddPirateModalReturn => {
   return {
     isOpen: modal.isOpen,
     selectedName,
-    availableBuyers: modal.data || [],
     open,
     close,
     handleAdd,

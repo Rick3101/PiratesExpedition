@@ -673,7 +673,6 @@ export const BramblerManagerPresenter: React.FC<BramblerManagerContainerProps> =
         isOpen={showAddItemModal}
         onClose={onCloseAddItemModal}
         onSuccess={onAddItemSuccess}
-        expeditions={expeditions}
         masterKey={decryptionKey}
       />
 

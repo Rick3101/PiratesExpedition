@@ -12,15 +12,15 @@ import { ConsumptionsTab } from './tabs/ConsumptionsTab';
 import { AnalyticsTab } from './tabs/AnalyticsTab';
 import { pirateColors, spacing, pirateTypography, getStatusColor, getStatusEmoji } from '@/utils/pirateTheme';
 import { formatDate } from '@/utils/formatters';
-import { ExpeditionDetails, Product, QualityGrade } from '@/types/expedition';
+import { ExpeditionDetails, QualityGrade } from '@/types/expedition';
+import type { EncryptedItem } from '@/services/api/bramblerService';
 
 interface ExpeditionDetailsPresenterProps {
   // Data
   expedition: ExpeditionDetails | null;
   pirateNames: any[];
-  availableBuyers: { name: string }[];
   totalPirates: number;
-  availableProducts: Product[];
+  availableItems: EncryptedItem[];
   isOwner: boolean;
   currentUserId: number;
 
@@ -35,7 +35,7 @@ interface ExpeditionDetailsPresenterProps {
   selectedItemForConsume: any | null;
   addingPirate: boolean;
   showAddItemModal: boolean;
-  selectedProductId: number | null;
+  selectedItemId: number | null;
   itemQuantity: number;
   itemQuality: QualityGrade | '';
   addingItem: boolean;
@@ -56,7 +56,7 @@ interface ExpeditionDetailsPresenterProps {
   onOpenAddItemModal: () => void;
   onCloseAddItemModal: () => void;
   onAddItem: () => void;
-  onSelectedProductIdChange: (id: number | null) => void;
+  onSelectedItemIdChange: (id: number | null) => void;
   onItemQuantityChange: (quantity: number) => void;
   onItemQualityChange: (quality: QualityGrade | '') => void;
 }
@@ -310,9 +310,8 @@ const Label = styled.label`
 export const ExpeditionDetailsPresenter: React.FC<ExpeditionDetailsPresenterProps> = ({
   expedition,
   pirateNames,
-  availableBuyers,
   totalPirates,
-  availableProducts,
+  availableItems,
   isOwner,
   currentUserId,
   loading,
@@ -325,7 +324,7 @@ export const ExpeditionDetailsPresenter: React.FC<ExpeditionDetailsPresenterProp
   selectedItemForConsume,
   addingPirate,
   showAddItemModal,
-  selectedProductId,
+  selectedItemId,
   itemQuantity,
   itemQuality,
   addingItem,
@@ -344,7 +343,7 @@ export const ExpeditionDetailsPresenter: React.FC<ExpeditionDetailsPresenterProp
   onOpenAddItemModal,
   onCloseAddItemModal,
   onAddItem,
-  onSelectedProductIdChange,
+  onSelectedItemIdChange,
   onItemQuantityChange,
   onItemQualityChange,
 }) => {
@@ -394,6 +393,20 @@ export const ExpeditionDetailsPresenter: React.FC<ExpeditionDetailsPresenterProp
     );
   }
 
+  // Enrich consumptions with encrypted product names from expedition items
+  const enrichedConsumptions = expedition.consumptions.map(consumption => {
+    // Find the matching expedition item by product_name
+    const matchingItem = expedition.items.find(
+      item => item.product_name === consumption.product_name
+    );
+
+    // Return consumption with encrypted_product_name from the matching item
+    return {
+      ...consumption,
+      encrypted_product_name: matchingItem?.encrypted_product_name || consumption.encrypted_product_name
+    };
+  });
+
   // Render tab content
   const renderTabContent = () => {
     switch (activeTab) {
@@ -431,9 +444,10 @@ export const ExpeditionDetailsPresenter: React.FC<ExpeditionDetailsPresenterProp
       case 'consumptions':
         return (
           <ConsumptionsTab
-            consumptions={expedition.consumptions}
+            consumptions={enrichedConsumptions}
             onPaymentSuccess={onPaymentSuccess}
             isOwner={isOwner}
+            expeditionId={expedition.id}
           />
         );
 
@@ -539,23 +553,15 @@ export const ExpeditionDetailsPresenter: React.FC<ExpeditionDetailsPresenterProp
                 <Users size={24} /> Add Pirate to Crew
               </ModalTitle>
               <ModalDescription>
-                Select a buyer to add to this expedition. A unique pirate alias will be generated for anonymity.
+                Enter a buyer name to add to this expedition. A unique pirate alias will be generated for anonymity.
               </ModalDescription>
-              <Select
+              <Input
+                type="text"
                 value={selectedPirateName}
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => onSelectedPirateNameChange(e.target.value)}
-                disabled={availableBuyers.length === 0}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => onSelectedPirateNameChange(e.target.value)}
+                placeholder="Enter buyer name..."
                 autoFocus
-              >
-                <option value="">
-                  {availableBuyers.length === 0 ? 'No available buyers (all buyers are already pirates)' : 'Select a buyer...'}
-                </option>
-                {availableBuyers.map((buyer) => (
-                  <option key={buyer.name} value={buyer.name}>
-                    {buyer.name}
-                  </option>
-                ))}
-              </Select>
+              />
               <ModalActions>
                 <PirateButton variant="outline" onClick={onCloseAddPirateModal} disabled={addingPirate}>
                   Cancel
@@ -592,25 +598,25 @@ export const ExpeditionDetailsPresenter: React.FC<ExpeditionDetailsPresenterProp
                 <Package size={24} /> Add Item to Expedition
               </ModalTitle>
               <ModalDescription>
-                Select a product, specify the quantity needed, and optionally set a quality grade for this expedition item.
+                Select an encrypted item, specify the quantity needed, and optionally set a unit cost for this expedition item.
               </ModalDescription>
 
               <FormGroup>
-                <Label>Product</Label>
+                <Label>Encrypted Item</Label>
                 <Select
-                  value={selectedProductId || ''}
+                  value={selectedItemId || ''}
                   onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                    onSelectedProductIdChange(e.target.value ? Number(e.target.value) : null)
+                    onSelectedItemIdChange(e.target.value ? Number(e.target.value) : null)
                   }
-                  disabled={availableProducts.length === 0}
+                  disabled={availableItems.length === 0}
                   autoFocus
                 >
                   <option value="">
-                    {availableProducts.length === 0 ? 'No available products' : 'Select a product...'}
+                    {availableItems.length === 0 ? 'No available items' : 'Select an item...'}
                   </option>
-                  {availableProducts.map((product) => (
-                    <option key={product.id} value={product.id}>
-                      {product.emoji ? `${product.emoji} ` : ''}{product.name} - ${product.price.toFixed(2)}
+                  {availableItems.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.encrypted_item_name}
                     </option>
                   ))}
                 </Select>
@@ -650,7 +656,7 @@ export const ExpeditionDetailsPresenter: React.FC<ExpeditionDetailsPresenterProp
                 <PirateButton
                   variant="primary"
                   onClick={onAddItem}
-                  disabled={!selectedProductId || itemQuantity <= 0 || addingItem}
+                  disabled={!selectedItemId || itemQuantity <= 0 || addingItem}
                 >
                   {addingItem ? 'Adding...' : 'Add Item'}
                 </PirateButton>

@@ -1,12 +1,10 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { bramblerService } from '@/services/api/bramblerService';
-import { userService } from '@/services/api/userService';
 import { hapticFeedback } from '@/utils/telegram';
-import { PirateName, Buyer } from '@/types/expedition';
+import { PirateName } from '@/types/expedition';
 
 export const useExpeditionPirates = (expeditionId: number | null) => {
   const [pirateNames, setPirateNames] = useState<PirateName[]>([]);
-  const [allBuyers, setAllBuyers] = useState<Buyer[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -14,39 +12,17 @@ export const useExpeditionPirates = (expeditionId: number | null) => {
   const loadPirateNames = useCallback(async () => {
     if (!expeditionId) return;
 
+    setLoading(true);
     try {
       const names = await bramblerService.getNames(expeditionId);
       setPirateNames(names);
     } catch (error) {
       console.error('Error loading pirate names:', error);
       setError('Failed to load pirate names');
-    }
-  }, [expeditionId]);
-
-  // Load all buyers once (called on mount)
-  const loadAllBuyers = useCallback(async () => {
-    setLoading(true);
-    try {
-      const buyers = await userService.getBuyers();
-      setAllBuyers(buyers.map(b => ({ name: b.name })));
-    } catch (error) {
-      console.error('Error loading buyers:', error);
-      setError('Failed to load buyers');
     } finally {
       setLoading(false);
     }
-  }, []);
-
-  // Compute available buyers from existing data (no API call)
-  const availableBuyers = useMemo(() => {
-    // Get set of existing original names from pirates
-    const existingOriginalNames = new Set(
-      pirateNames.map(p => p.original_name).filter(Boolean)
-    );
-
-    // Filter out buyers who are already pirates in this expedition
-    return allBuyers.filter(b => !existingOriginalNames.has(b.name));
-  }, [allBuyers, pirateNames]);
+  }, [expeditionId]);
 
   // Add a new pirate to the expedition
   const addPirate = useCallback(async (originalName: string): Promise<void> => {
@@ -61,7 +37,7 @@ export const useExpeditionPirates = (expeditionId: number | null) => {
 
       hapticFeedback('success');
 
-      // Only need to reload pirate names - availableBuyers will auto-update via useMemo
+      // Reload pirate names after adding
       await loadPirateNames();
     } catch (error) {
       hapticFeedback('error');
@@ -69,18 +45,15 @@ export const useExpeditionPirates = (expeditionId: number | null) => {
     }
   }, [expeditionId, loadPirateNames]);
 
-  // Initial load - load both pirates and buyers
+  // Initial load - load pirate names only
   useEffect(() => {
     loadPirateNames();
-    loadAllBuyers();
-  }, [loadPirateNames, loadAllBuyers]);
+  }, [loadPirateNames]);
 
   return {
     pirateNames,
-    availableBuyers,
     loading,
     error,
-    loadAvailableBuyers: loadAllBuyers, // Keeping same API for backwards compatibility
     addPirate,
     refresh: loadPirateNames,
   };

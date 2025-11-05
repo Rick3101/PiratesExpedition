@@ -274,21 +274,20 @@ async generatePirateNames(
   expeditionId: number,
   data: BramblerGenerateRequest
 ): Promise<PirateName[]> {
-  const response = await this.api.post<{ pirate_names: PirateName[] }>(
+  const response = await this.api.post<{ pirates: PirateName[] }>(
     `/api/brambler/generate/${expeditionId}`,
     data
   );
-  return response.data.pirate_names;
+  return response.data.pirates;
 }
 ```
 
 **Usage**:
 ```typescript
 const pirateNames = await expeditionApi.generatePirateNames(1, {
-  real_names: ['Alice', 'Bob', 'Charlie'],
-  owner_key: 'secret-encryption-key'
+  original_names: ['Alice', 'Bob', 'Charlie']
 });
-// Returns: PirateName[] with encrypted mappings
+// Returns: PirateName[] with encrypted/anonymized pirate names
 ```
 
 #### Decrypt Pirate Names
@@ -316,10 +315,10 @@ const mapping = await expeditionApi.decryptPirateNames(1, {
 #### Get Pirate Names
 ```typescript
 async getPirateNames(expeditionId: number): Promise<PirateName[]> {
-  const response = await this.api.get<{ pirate_names: PirateName[] }>(
+  const response = await this.api.get<{ pirates: PirateName[] }>(
     `/api/brambler/names/${expeditionId}`
   );
-  return response.data.pirate_names;
+  return response.data.pirates;
 }
 ```
 

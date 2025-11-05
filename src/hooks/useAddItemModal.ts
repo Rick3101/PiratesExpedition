@@ -1,12 +1,12 @@
 import { useState, useCallback } from 'react';
 import { useModalState } from './useModalState';
-import { Product, QualityGrade } from '@/types/expedition';
-import { productService } from '@/services/api/productService';
+import { QualityGrade } from '@/types/expedition';
+import { bramblerService, type EncryptedItem } from '@/services/api/bramblerService';
 
 export interface AddItemModalReturn {
   isOpen: boolean;
-  availableProducts: Product[];
-  selectedProductId: number | null;
+  availableItems: EncryptedItem[];
+  selectedItemId: number | null;
   itemQuantity: number;
   itemQuality: QualityGrade | '';
   addingItem: boolean;
@@ -17,38 +17,38 @@ export interface AddItemModalReturn {
     addFn: (expeditionId: number, items: any) => Promise<void>,
     onSuccess: () => Promise<void>
   ) => Promise<void>;
-  setSelectedProductId: (id: number | null) => void;
+  setSelectedItemId: (id: number | null) => void;
   setItemQuantity: (quantity: number) => void;
   setItemQuality: (quality: QualityGrade | '') => void;
 }
 
 /**
  * Specialized hook for managing the "Add Item" modal state and logic
- * Encapsulates product selection, quantity/quality configuration, and item addition flow
+ * Encapsulates encrypted item selection, quantity/quality configuration, and item addition flow
  */
 export const useAddItemModal = (): AddItemModalReturn => {
-  const modal = useModalState<Product[]>();
-  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
+  const modal = useModalState<EncryptedItem[]>();
+  const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
   const [itemQuantity, setItemQuantity] = useState<number>(1);
   const [itemQuality, setItemQuality] = useState<QualityGrade | ''>('');
   const [addingItem, setAddingItem] = useState(false);
 
   const open = useCallback(async () => {
     try {
-      const products = await productService.getAll();
-      modal.openModal(products);
-      setSelectedProductId(null);
+      const items = await bramblerService.getAllEncryptedItems();
+      modal.openModal(items);
+      setSelectedItemId(null);
       setItemQuantity(1);
       setItemQuality('');
     } catch (error) {
-      console.error('Error loading products:', error);
+      console.error('Error loading encrypted items:', error);
       throw error;
     }
   }, [modal]);
 
   const close = useCallback(() => {
     modal.closeModal();
-    setSelectedProductId(null);
+    setSelectedItemId(null);
     setItemQuantity(1);
     setItemQuality('');
   }, [modal]);
@@ -58,7 +58,7 @@ export const useAddItemModal = (): AddItemModalReturn => {
     addFn: (expeditionId: number, items: any) => Promise<void>,
     onSuccess: () => Promise<void>
   ) => {
-    if (!selectedProductId || itemQuantity <= 0) {
+    if (!selectedItemId || itemQuantity <= 0) {
       return;
     }
 
@@ -67,7 +67,7 @@ export const useAddItemModal = (): AddItemModalReturn => {
       // Execute the add operation
       await addFn(expeditionId, {
         items: [{
-          product_id: selectedProductId,
+          product_id: selectedItemId,
           quantity: itemQuantity,
           unit_cost: itemQuality ? parseFloat(itemQuality) : undefined,
         }],
@@ -84,19 +84,19 @@ export const useAddItemModal = (): AddItemModalReturn => {
     } finally {
       setAddingItem(false);
     }
-  }, [selectedProductId, itemQuantity, itemQuality, close]);
+  }, [selectedItemId, itemQuantity, itemQuality, close]);
 
   return {
     isOpen: modal.isOpen,
-    availableProducts: modal.data || [],
-    selectedProductId,
+    availableItems: modal.data || [],
+    selectedItemId,
     itemQuantity,
     itemQuality,
     addingItem,
     open,
     close,
     handleAdd,
-    setSelectedProductId,
+    setSelectedItemId,
     setItemQuantity,
     setItemQuality,
   };

@@ -10,9 +10,18 @@
       "Bash(timeout 5 bash:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(npm run type-check:*)"
+      "Bash(npm run type-check:*)",
+      "Read(//c/Users/rikrd/source/repos/**)",
+      "WebFetch(domain:github.com)",
+      "Bash(dir:*)",
+      "Bash(findstr:*)",
+      "Bash(nul)"
     ],
     "deny": [],
     "ask": []
-  }
+  },
+  "enabledMcpjsonServers": [
+    "snap-happy"
+  ],
+  "enableAllProjectMcpServers": true
 }

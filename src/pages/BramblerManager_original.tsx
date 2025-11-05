@@ -1326,7 +1326,6 @@ export const BramblerManager: React.FC = () => {
         isOpen={state.showAddItemModal}
         onClose={() => setState(prev => ({ ...prev, showAddItemModal: false }))}
         onSuccess={handleAddItemSuccess}
-        expeditions={expeditions}
         masterKey={state.decryptionKey}
       />
 

@@ -5,22 +5,20 @@ import { PirateButton } from '@/components/ui/PirateButton';
 import { pirateColors, spacing, pirateTypography } from '@/utils/pirateTheme';
 import { hapticFeedback } from '@/utils/telegram';
 import type { EncryptedItem } from '@/services/api/bramblerService';
+import type { Product } from '@/types/expedition';
 
-interface Expedition {
-  id: number;
-  name: string;
-}
+// Dummy expedition for global product name mappings
+const GLOBAL_MAPPING_EXPEDITION_ID = 999999;
 
 interface AddItemModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (item: EncryptedItem) => void;
-  expeditions: Expedition[];
   masterKey: string;
 }
 
 interface AddItemFormData {
-  expeditionId: number;
+  productId: number;
   originalItemName: string;
   encryptedName: string;
   useCustomName: boolean;
@@ -211,23 +209,24 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
-  expeditions,
   masterKey
 }) => {
   const [formData, setFormData] = useState<AddItemFormData>({
-    expeditionId: 0,
+    productId: 0,
     originalItemName: '',
     encryptedName: '',
     useCustomName: false,
     itemType: 'product'
   });
   const [loading, setLoading] = useState(false);
+  const [loadingProducts, setLoadingProducts] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [availableProducts, setAvailableProducts] = useState<Product[]>([]);
 
   useEffect(() => {
     if (isOpen) {
       setFormData({
-        expeditionId: 0,
+        productId: 0,
         originalItemName: '',
         encryptedName: '',
         useCustomName: false,
@@ -235,8 +234,50 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       });
       setError(null);
       setLoading(false);
+
+      // Load available products that don't have encrypted names yet
+      loadAvailableProducts();
     }
   }, [isOpen]);
+
+  const loadAvailableProducts = async () => {
+    setLoadingProducts(true);
+    try {
+      const { productService } = await import('@/services/api/productService');
+      const { bramblerService } = await import('@/services/api/bramblerService');
+
+      // Get all products
+      const allProducts = await productService.getAll();
+
+      // Decrypt all items to see which product names are already encrypted
+      let encryptedProductNames = new Set<string>();
+
+      try {
+        const decryptedMappings = await bramblerService.decryptAll(masterKey);
+        // decryptedMappings.item_mappings is { "encrypted_name": "original_name" }
+        // We need the original names (values)
+        const originalNames = Object.values(decryptedMappings.item_mappings);
+        encryptedProductNames = new Set(
+          originalNames.map(name => name.toLowerCase())
+        );
+      } catch (decryptError) {
+        console.warn('Could not decrypt items, showing all products:', decryptError);
+        // If decryption fails, we can't filter, so show all products
+      }
+
+      // Filter out products that already have encrypted names
+      const available = allProducts.filter(
+        product => !encryptedProductNames.has(product.name.toLowerCase())
+      );
+
+      setAvailableProducts(available);
+    } catch (err) {
+      console.error('Failed to load available products:', err);
+      setError('Failed to load available products');
+    } finally {
+      setLoadingProducts(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -244,22 +285,8 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
     setError(null);
 
     // Validation
-    if (!formData.expeditionId) {
-      setError('Please select an expedition');
-      setLoading(false);
-      hapticFeedback('error');
-      return;
-    }
-
-    if (!formData.originalItemName.trim()) {
-      setError('Please enter the original item name');
-      setLoading(false);
-      hapticFeedback('error');
-      return;
-    }
-
-    if (formData.originalItemName.trim().length < 3) {
-      setError('Original item name must be at least 3 characters');
+    if (!formData.productId) {
+      setError('Please select a product');
       setLoading(false);
       hapticFeedback('error');
       return;
@@ -272,14 +299,23 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
       return;
     }
 
+    // Get the selected product name
+    const selectedProduct = availableProducts.find(p => p.id === formData.productId);
+    if (!selectedProduct) {
+      setError('Selected product not found');
+      setLoading(false);
+      hapticFeedback('error');
+      return;
+    }
+
     try {
       const { bramblerService } = await import('@/services/api/bramblerService');
 
       hapticFeedback('medium');
 
       const result = await bramblerService.createEncryptedItem({
-        expedition_id: formData.expeditionId,
-        original_item_name: formData.originalItemName.trim(),
+        expedition_id: GLOBAL_MAPPING_EXPEDITION_ID, // Dummy expedition for global mapping
+        original_item_name: selectedProduct.name,
         encrypted_name: formData.useCustomName ? formData.encryptedName.trim() : undefined,
         owner_key: masterKey,
         item_type: formData.itemType
@@ -336,53 +372,46 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
           </ModalHeader>
 
           <ModalDescription>
-            Create a new encrypted item with a fantasy name. The original item name will be
-            encrypted and never stored in plain text.
+            Create a global encrypted name for a product. The encrypted name will be automatically
+            used across all expeditions. Only products without existing encrypted names are shown.
           </ModalDescription>
 
           <form onSubmit={handleSubmit}>
             <FormGroup>
-              <Label>Expedition</Label>
+              <Label>Product to Encrypt</Label>
               <Select
-                value={formData.expeditionId}
-                onChange={(e) => setFormData(prev => ({
-                  ...prev,
-                  expeditionId: parseInt(e.target.value)
-                }))}
+                value={formData.productId}
+                onChange={(e) => {
+                  const productId = parseInt(e.target.value);
+                  const product = availableProducts.find(p => p.id === productId);
+                  setFormData(prev => ({
+                    ...prev,
+                    productId,
+                    originalItemName: product?.name || ''
+                  }));
+                }}
                 required
-                disabled={loading || expeditions.length === 0}
-                autoFocus
+                disabled={loading || loadingProducts || availableProducts.length === 0}
               >
                 <option value={0}>
-                  {expeditions.length === 0 ? 'No expeditions available' : 'Select expedition...'}
+                  {loadingProducts
+                    ? 'Loading products...'
+                    : availableProducts.length === 0
+                    ? 'No products available without encrypted names'
+                    : 'Select a product...'}
                 </option>
-                {expeditions.map(exp => (
-                  <option key={exp.id} value={exp.id}>
-                    {exp.name}
+                {availableProducts.map(product => (
+                  <option key={product.id} value={product.id}>
+                    {product.emoji ? `${product.emoji} ` : ''}{product.name}
                   </option>
                 ))}
               </Select>
-              {expeditions.length === 0 && (
-                <HelpText>Create an expedition first</HelpText>
+              {availableProducts.length === 0 && !loadingProducts && (
+                <HelpText>All products already have encrypted names</HelpText>
               )}
-            </FormGroup>
-
-            <FormGroup>
-              <Label>Original Item Name (Real Name)</Label>
-              <Input
-                type="text"
-                value={formData.originalItemName}
-                onChange={(e) => setFormData(prev => ({
-                  ...prev,
-                  originalItemName: e.target.value
-                }))}
-                placeholder="Enter real item name..."
-                minLength={3}
-                maxLength={200}
-                required
-                disabled={loading}
-              />
-              <HelpText>This will be encrypted and never shown in plain text</HelpText>
+              {availableProducts.length > 0 && (
+                <HelpText>Select a product that doesn't have an encrypted name yet</HelpText>
+              )}
             </FormGroup>
 
             <FormGroup>
@@ -461,9 +490,9 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                   e?.preventDefault();
                   handleSubmit(e as any);
                 }}
-                disabled={loading || !formData.expeditionId || !formData.originalItemName.trim()}
+                disabled={loading || loadingProducts || !formData.productId}
               >
-                {loading ? 'Creating...' : 'Create Item'}
+                {loading ? 'Creating...' : loadingProducts ? 'Loading...' : 'Create Item'}
               </PirateButton>
             </ModalActions>
           </form>

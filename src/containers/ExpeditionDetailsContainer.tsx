@@ -23,7 +23,7 @@ export const ExpeditionDetailsContainer: React.FC<ExpeditionDetailsContainerProp
 
   // Data hooks
   const { expedition, loading, refreshing, error, refresh } = useExpeditionDetails(expeditionId);
-  const { pirateNames, availableBuyers, addPirate } = useExpeditionPirates(expeditionId);
+  const { pirateNames, addPirate } = useExpeditionPirates(expeditionId);
   const { consuming, consumeItem } = useItemConsumption(expeditionId);
 
   // Modal hooks
@@ -34,7 +34,7 @@ export const ExpeditionDetailsContainer: React.FC<ExpeditionDetailsContainerProp
   // Calculated values
   const totalPirates = useMemo(() => {
     if (!expedition) return 0;
-    return new Set(expedition.consumptions.map(c => c.consumer_name)).size;
+    return new Set(expedition.consumptions.map(c => c.pirate_name)).size;
   }, [expedition]);
 
   // Check if current user is the expedition owner
@@ -67,9 +67,7 @@ export const ExpeditionDetailsContainer: React.FC<ExpeditionDetailsContainerProp
 
   // Add Pirate Modal handlers
   const handleOpenAddPirateModal = () => {
-    // availableBuyers is already computed via useMemo and auto-updates
-    // No need to call loadAvailableBuyers - it's called on mount
-    addPirateModal.open(availableBuyers);
+    addPirateModal.open();
   };
 
   const handleAddPirate = () => {
@@ -131,9 +129,8 @@ export const ExpeditionDetailsContainer: React.FC<ExpeditionDetailsContainerProp
       // Data
       expedition={expedition}
       pirateNames={pirateNames}
-      availableBuyers={addPirateModal.availableBuyers}
       totalPirates={totalPirates}
-      availableProducts={addItemModal.availableProducts}
+      availableItems={addItemModal.availableItems}
       isOwner={isOwner}
       currentUserId={currentUserId || 0}
 
@@ -154,7 +151,7 @@ export const ExpeditionDetailsContainer: React.FC<ExpeditionDetailsContainerProp
 
       // Add Item Modal
       showAddItemModal={addItemModal.isOpen}
-      selectedProductId={addItemModal.selectedProductId}
+      selectedItemId={addItemModal.selectedItemId}
       itemQuantity={addItemModal.itemQuantity}
       itemQuality={addItemModal.itemQuality}
       addingItem={addItemModal.addingItem}
@@ -181,7 +178,7 @@ export const ExpeditionDetailsContainer: React.FC<ExpeditionDetailsContainerProp
       onOpenAddItemModal={addItemModal.open}
       onCloseAddItemModal={addItemModal.close}
       onAddItem={handleAddItem}
-      onSelectedProductIdChange={addItemModal.setSelectedProductId}
+      onSelectedItemIdChange={addItemModal.setSelectedItemId}
       onItemQuantityChange={addItemModal.setItemQuantity}
       onItemQualityChange={addItemModal.setItemQuality}
     />

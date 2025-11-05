@@ -10,11 +10,13 @@ import { formatCurrency, formatDateTime } from '@/utils/formatters';
 import { ItemConsumption } from '@/types/expedition';
 import { useConsumptionPayment } from '@/hooks/useConsumptionPayment';
 import { hapticFeedback } from '@/utils/telegram';
+import { bramblerService } from '@/services/api/bramblerService';
 
 interface ConsumptionsTabProps {
   consumptions: ItemConsumption[];
   onPaymentSuccess?: () => void;
   isOwner?: boolean;
+  expeditionId: number;
 }
 
 const TabContent = styled(motion.div)`
@@ -208,13 +210,20 @@ export const ConsumptionsTab: React.FC<ConsumptionsTabProps> = ({
   consumptions,
   onPaymentSuccess,
   isOwner = false,
+  expeditionId,
 }) => {
   console.log('[ConsumptionsTab] Component rendering with', consumptions.length, 'consumptions');
   consumptions.forEach(c => {
     console.log(`  [ConsumptionsTab] ID ${c.id}: Status ${c.payment_status}, Paid ${c.amount_paid}/${c.total_price}`);
+    console.log(`  [ConsumptionsTab] Product: encrypted="${c.encrypted_product_name}" real="${c.product_name}"`);
+    console.log(`  [ConsumptionsTab] Names: pirate="${c.pirate_name}" original="${c.original_name}"`);
   });
 
   const [showOriginalNames, setShowOriginalNames] = useState(false);
+  const [decryptedMappings, setDecryptedMappings] = useState<Record<string, string>>({});
+  const [isDecrypting, setIsDecrypting] = useState(false);
+  const [decryptError, setDecryptError] = useState<string | null>(null);
+  const [ownerKey, setOwnerKey] = useState<string | null>(null);
   const {
     payingConsumptionId,
     paymentAmount,
@@ -227,13 +236,96 @@ export const ConsumptionsTab: React.FC<ConsumptionsTabProps> = ({
     validatePaymentAmount,
   } = useConsumptionPayment(onPaymentSuccess);
 
-  const handleToggleDisplay = () => {
-    hapticFeedback('light');
-    setShowOriginalNames(!showOriginalNames);
+  // Get the display name for a consumption (decrypted if available and showOriginalNames is true)
+  const getDisplayName = (consumption: ItemConsumption): string => {
+    if (showOriginalNames) {
+      // Check decrypted mappings first
+      if (decryptedMappings[consumption.pirate_name]) {
+        return decryptedMappings[consumption.pirate_name];
+      }
+      // Fall back to API-provided original name (for backward compatibility)
+      if (consumption.original_name) {
+        return consumption.original_name;
+      }
+    }
+    return consumption.pirate_name;
   };
 
-  const getDisplayName = (consumption: ItemConsumption): string => {
-    return showOriginalNames ? consumption.consumer_name : consumption.pirate_name;
+  // Check if consumption has original name (either from API or decrypted)
+  const hasOriginalName = (consumption: ItemConsumption): boolean => {
+    return Boolean(consumption.original_name || decryptedMappings[consumption.pirate_name]);
+  };
+
+  // Check if any consumptions need decryption (have no original_name from API)
+  const hasEncryptedConsumptions = consumptions.some(c => !c.original_name);
+
+  // Check if owner can see original names directly from API
+  const hasDirectOriginalNames = consumptions.some(c => c.original_name);
+
+  const handleDecryptNames = async () => {
+    if (!isOwner) {
+      setDecryptError('Only the expedition owner can decrypt pirate names');
+      return;
+    }
+
+    setIsDecrypting(true);
+    setDecryptError(null);
+    hapticFeedback('medium');
+
+    try {
+      // First, get the owner key if we don't have it
+      let keyToUse = ownerKey;
+
+      if (!keyToUse) {
+        try {
+          keyToUse = await bramblerService.getOwnerKey(expeditionId);
+          setOwnerKey(keyToUse);
+        } catch (error: any) {
+          console.error('Failed to get owner key:', error);
+          const errorMsg = error?.message || 'Failed to retrieve owner key';
+          setDecryptError(`Owner key error: ${errorMsg}. Make sure you are the expedition owner.`);
+          return;
+        }
+      }
+
+      // Now decrypt with the owner key
+      try {
+        const decrypted = await bramblerService.decryptNames(expeditionId, {
+          owner_key: keyToUse
+        });
+
+        setDecryptedMappings(decrypted);
+        setShowOriginalNames(true);
+      } catch (error: any) {
+        console.error('Failed to decrypt names:', error);
+        const errorMsg = error?.message || 'Decryption failed';
+        setDecryptError(`Decryption error: ${errorMsg}. The owner key may be invalid or data may be corrupted.`);
+      }
+    } catch (error: any) {
+      console.error('Unexpected decryption error:', error);
+      setDecryptError('An unexpected error occurred. Please try again.');
+    } finally {
+      setIsDecrypting(false);
+    }
+  };
+
+  const handleToggleDisplay = () => {
+    hapticFeedback('light');
+    if (!showOriginalNames) {
+      // If there are direct original names from API (no encryption), just toggle
+      if (hasDirectOriginalNames && !hasEncryptedConsumptions) {
+        setShowOriginalNames(true);
+      } else if (hasEncryptedConsumptions) {
+        // Try to decrypt encrypted names
+        handleDecryptNames();
+      } else {
+        // Fallback: just toggle
+        setShowOriginalNames(true);
+      }
+    } else {
+      // Hide original names
+      setShowOriginalNames(false);
+    }
   };
 
   return (
@@ -256,8 +348,11 @@ export const ConsumptionsTab: React.FC<ConsumptionsTabProps> = ({
                 variant={showOriginalNames ? 'danger' : 'secondary'}
                 size="sm"
                 onClick={handleToggleDisplay}
+                disabled={isDecrypting}
               >
-                {showOriginalNames ? (
+                {isDecrypting ? (
+                  <>Decrypting...</>
+                ) : showOriginalNames ? (
                   <><EyeOff size={16} /> Hide Original Names</>
                 ) : (
                   <><Eye size={16} /> Show Original Names</>
@@ -266,7 +361,20 @@ export const ConsumptionsTab: React.FC<ConsumptionsTabProps> = ({
             </DecryptionControls>
           </DecryptionHeader>
 
-          {showOriginalNames && (
+          {decryptError && (
+            <WarningBanner
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+            >
+              <AlertTriangle size={20} color={pirateColors.danger} />
+              <WarningText style={{ color: pirateColors.danger }}>
+                {decryptError}
+              </WarningText>
+            </WarningBanner>
+          )}
+
+          {showOriginalNames && !decryptError && (
             <WarningBanner
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -306,13 +414,13 @@ export const ConsumptionsTab: React.FC<ConsumptionsTabProps> = ({
                     </ConsumptionIcon>
                     <ConsumptionDetails>
                       <ConsumptionPirate style={{
-                        color: showOriginalNames ? pirateColors.warning : pirateColors.primary
+                        color: showOriginalNames && hasOriginalName(consumption) ? pirateColors.warning : pirateColors.primary
                       }}>
-                        {showOriginalNames && isOwner && '👤 '}
+                        {showOriginalNames && hasOriginalName(consumption) && '👤 '}
                         {getDisplayName(consumption)}
                       </ConsumptionPirate>
                       <ConsumptionItem>
-                        {consumption.quantity}x {consumption.product_name}
+                        {consumption.quantity}x {consumption.encrypted_product_name || consumption.product_name}
                       </ConsumptionItem>
                       <PaymentStatusBadge $status={consumption.payment_status}>
                         {consumption.payment_status}

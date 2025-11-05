@@ -19,6 +19,7 @@ export interface ExpeditionItem {
   id: number;
   product_id: number;
   product_name: string;
+  encrypted_product_name?: string;  // Encrypted/anonymized product name from expedition_items
   product_emoji?: string;
   quantity: number;           // Total quantity needed (same as quantity_needed)
   quantity_needed: number;
@@ -33,9 +34,10 @@ export interface ExpeditionItem {
 
 export interface ItemConsumption {
   id: number;
-  consumer_name: string;
   pirate_name: string;
+  original_name?: string; // Original consumer name (only visible to owner)
   product_name: string;
+  encrypted_product_name?: string;  // Encrypted/anonymized product name
   quantity: number;
   unit_price: number;
   total_price: number;
