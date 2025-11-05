@@ -1,7 +1,7 @@
 import React from 'react';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
-import { Users, Eye, EyeOff, Key, AlertTriangle } from 'lucide-react';
+import { Users, Key } from 'lucide-react';
 import { PirateButton } from '@/components/ui/PirateButton';
 import { PirateCard } from '@/components/ui/PirateCard';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -87,57 +87,6 @@ const PaymentStatusBadge = styled.span<{ $status: string }>`
   margin-top: ${spacing.xs};
 `;
 
-const DecryptionSection = styled.div`
-  background: linear-gradient(135deg, ${pirateColors.warning}15, ${pirateColors.secondary}10);
-  border: 2px solid ${pirateColors.lightGold};
-  border-radius: 12px;
-  padding: ${spacing.lg};
-  margin-bottom: ${spacing.lg};
-`;
-
-const DecryptionHeader = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: ${spacing.md};
-  flex-wrap: wrap;
-  gap: ${spacing.md};
-`;
-
-const DecryptionTitle = styled.h4`
-  font-family: ${pirateTypography.headings};
-  color: ${pirateColors.primary};
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: ${spacing.sm};
-`;
-
-const DecryptionControls = styled.div`
-  display: flex;
-  gap: ${spacing.sm};
-  align-items: center;
-  flex-wrap: wrap;
-`;
-
-const WarningBanner = styled(motion.div)`
-  background: linear-gradient(135deg, ${pirateColors.warning}20, ${pirateColors.danger}10);
-  border: 2px solid ${pirateColors.warning};
-  border-radius: 12px;
-  padding: ${spacing.md};
-  margin-bottom: ${spacing.md};
-  display: flex;
-  align-items: center;
-  gap: ${spacing.md};
-`;
-
-const WarningText = styled.p`
-  color: ${pirateColors.muted};
-  margin: 0;
-  font-size: ${pirateTypography.sizes.sm};
-  line-height: 1.5;
-`;
-
 const OriginalNameBadge = styled.div`
   background: ${pirateColors.warning}20;
   border: 1px solid ${pirateColors.warning};
@@ -156,12 +105,8 @@ export const PiratesTab: React.FC<PiratesTabProps> = ({
   pirateNames,
   onAddPirate,
   expeditionId: _expeditionId,
-  isOwner,
   showOriginalNames = false,
   decryptedMappings = {},
-  isDecrypting = false,
-  decryptError = null,
-  onToggleDisplay,
 }) => {
   // Helper functions for displaying names
   const getDisplayName = <T extends { pirate_name: string; original_name?: string }>(item: T): string => {
@@ -181,12 +126,6 @@ export const PiratesTab: React.FC<PiratesTabProps> = ({
   const hasOriginalName = <T extends { pirate_name: string; original_name?: string }>(item: T): boolean => {
     return Boolean(item.original_name || decryptedMappings[item.pirate_name]);
   };
-
-  // Check if any pirates need decryption (have no original_name from API)
-  const hasEncryptedPirates = pirateNames.some(p => !p.original_name);
-
-  // Check if owner can see original names directly from API
-  const hasDirectOriginalNames = pirateNames.some(p => p.original_name);
 
   return (
     <TabContent

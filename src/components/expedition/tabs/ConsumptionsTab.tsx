@@ -1,7 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Eye, EyeOff, AlertTriangle, Key } from 'lucide-react';
 import { PirateCard } from '@/components/ui/PirateCard';
 import { PirateButton as Button } from '@/components/ui/PirateButton';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -159,67 +158,12 @@ const PayButton = styled(Button)`
   margin-top: ${spacing.sm};
 `;
 
-const DecryptionSection = styled.div`
-  background: linear-gradient(135deg, ${pirateColors.warning}15, ${pirateColors.secondary}10);
-  border: 2px solid ${pirateColors.lightGold};
-  border-radius: 12px;
-  padding: ${spacing.lg};
-  margin-bottom: ${spacing.lg};
-`;
-
-const DecryptionHeader = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: ${spacing.md};
-  flex-wrap: wrap;
-  gap: ${spacing.md};
-`;
-
-const DecryptionTitle = styled.h4`
-  font-family: ${pirateTypography.headings};
-  color: ${pirateColors.primary};
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: ${spacing.sm};
-`;
-
-const DecryptionControls = styled.div`
-  display: flex;
-  gap: ${spacing.sm};
-  align-items: center;
-  flex-wrap: wrap;
-`;
-
-const WarningBanner = styled(motion.div)`
-  background: linear-gradient(135deg, ${pirateColors.warning}20, ${pirateColors.danger}10);
-  border: 2px solid ${pirateColors.warning};
-  border-radius: 12px;
-  padding: ${spacing.md};
-  margin-bottom: ${spacing.md};
-  display: flex;
-  align-items: center;
-  gap: ${spacing.md};
-`;
-
-const WarningText = styled.p`
-  color: ${pirateColors.muted};
-  margin: 0;
-  font-size: ${pirateTypography.sizes.sm};
-  line-height: 1.5;
-`;
-
 export const ConsumptionsTab: React.FC<ConsumptionsTabProps> = ({
   consumptions,
   onPaymentSuccess,
-  isOwner = false,
   expeditionId: _expeditionId,
   showOriginalNames = false,
   decryptedMappings = {},
-  isDecrypting = false,
-  decryptError = null,
-  onToggleDisplay,
 }) => {
   console.log('[ConsumptionsTab] Component rendering with', consumptions.length, 'consumptions');
   consumptions.forEach(c => {
