@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Eye, EyeOff, AlertTriangle, Key } from 'lucide-react';
@@ -9,14 +9,18 @@ import { pirateColors, spacing, pirateTypography } from '@/utils/pirateTheme';
 import { formatCurrency, formatDateTime } from '@/utils/formatters';
 import { ItemConsumption } from '@/types/expedition';
 import { useConsumptionPayment } from '@/hooks/useConsumptionPayment';
-import { hapticFeedback } from '@/utils/telegram';
-import { bramblerService } from '@/services/api/bramblerService';
 
 interface ConsumptionsTabProps {
   consumptions: ItemConsumption[];
   onPaymentSuccess?: () => void;
   isOwner?: boolean;
   expeditionId: number;
+  // Decryption props (passed from parent)
+  showOriginalNames?: boolean;
+  decryptedMappings?: Record<string, string>;
+  isDecrypting?: boolean;
+  decryptError?: string | null;
+  onToggleDisplay?: () => void;
 }
 
 const TabContent = styled(motion.div)`
@@ -210,7 +214,12 @@ export const ConsumptionsTab: React.FC<ConsumptionsTabProps> = ({
   consumptions,
   onPaymentSuccess,
   isOwner = false,
-  expeditionId,
+  expeditionId: _expeditionId,
+  showOriginalNames = false,
+  decryptedMappings = {},
+  isDecrypting = false,
+  decryptError = null,
+  onToggleDisplay,
 }) => {
   console.log('[ConsumptionsTab] Component rendering with', consumptions.length, 'consumptions');
   consumptions.forEach(c => {
@@ -219,11 +228,25 @@ export const ConsumptionsTab: React.FC<ConsumptionsTabProps> = ({
     console.log(`  [ConsumptionsTab] Names: pirate="${c.pirate_name}" original="${c.original_name}"`);
   });
 
-  const [showOriginalNames, setShowOriginalNames] = useState(false);
-  const [decryptedMappings, setDecryptedMappings] = useState<Record<string, string>>({});
-  const [isDecrypting, setIsDecrypting] = useState(false);
-  const [decryptError, setDecryptError] = useState<string | null>(null);
-  const [ownerKey, setOwnerKey] = useState<string | null>(null);
+  // Helper functions for displaying names
+  const getDisplayName = <T extends { pirate_name: string; original_name?: string }>(item: T): string => {
+    if (showOriginalNames) {
+      // Check decrypted mappings first
+      if (decryptedMappings[item.pirate_name]) {
+        return decryptedMappings[item.pirate_name];
+      }
+      // Fall back to API-provided original name
+      if (item.original_name) {
+        return item.original_name;
+      }
+    }
+    return item.pirate_name;
+  };
+
+  const hasOriginalName = <T extends { pirate_name: string; original_name?: string }>(item: T): boolean => {
+    return Boolean(item.original_name || decryptedMappings[item.pirate_name]);
+  };
+
   const {
     payingConsumptionId,
     paymentAmount,
@@ -236,98 +259,6 @@ export const ConsumptionsTab: React.FC<ConsumptionsTabProps> = ({
     validatePaymentAmount,
   } = useConsumptionPayment(onPaymentSuccess);
 
-  // Get the display name for a consumption (decrypted if available and showOriginalNames is true)
-  const getDisplayName = (consumption: ItemConsumption): string => {
-    if (showOriginalNames) {
-      // Check decrypted mappings first
-      if (decryptedMappings[consumption.pirate_name]) {
-        return decryptedMappings[consumption.pirate_name];
-      }
-      // Fall back to API-provided original name (for backward compatibility)
-      if (consumption.original_name) {
-        return consumption.original_name;
-      }
-    }
-    return consumption.pirate_name;
-  };
-
-  // Check if consumption has original name (either from API or decrypted)
-  const hasOriginalName = (consumption: ItemConsumption): boolean => {
-    return Boolean(consumption.original_name || decryptedMappings[consumption.pirate_name]);
-  };
-
-  // Check if any consumptions need decryption (have no original_name from API)
-  const hasEncryptedConsumptions = consumptions.some(c => !c.original_name);
-
-  // Check if owner can see original names directly from API
-  const hasDirectOriginalNames = consumptions.some(c => c.original_name);
-
-  const handleDecryptNames = async () => {
-    if (!isOwner) {
-      setDecryptError('Only the expedition owner can decrypt pirate names');
-      return;
-    }
-
-    setIsDecrypting(true);
-    setDecryptError(null);
-    hapticFeedback('medium');
-
-    try {
-      // First, get the owner key if we don't have it
-      let keyToUse = ownerKey;
-
-      if (!keyToUse) {
-        try {
-          keyToUse = await bramblerService.getOwnerKey(expeditionId);
-          setOwnerKey(keyToUse);
-        } catch (error: any) {
-          console.error('Failed to get owner key:', error);
-          const errorMsg = error?.message || 'Failed to retrieve owner key';
-          setDecryptError(`Owner key error: ${errorMsg}. Make sure you are the expedition owner.`);
-          return;
-        }
-      }
-
-      // Now decrypt with the owner key
-      try {
-        const decrypted = await bramblerService.decryptNames(expeditionId, {
-          owner_key: keyToUse
-        });
-
-        setDecryptedMappings(decrypted);
-        setShowOriginalNames(true);
-      } catch (error: any) {
-        console.error('Failed to decrypt names:', error);
-        const errorMsg = error?.message || 'Decryption failed';
-        setDecryptError(`Decryption error: ${errorMsg}. The owner key may be invalid or data may be corrupted.`);
-      }
-    } catch (error: any) {
-      console.error('Unexpected decryption error:', error);
-      setDecryptError('An unexpected error occurred. Please try again.');
-    } finally {
-      setIsDecrypting(false);
-    }
-  };
-
-  const handleToggleDisplay = () => {
-    hapticFeedback('light');
-    if (!showOriginalNames) {
-      // If there are direct original names from API (no encryption), just toggle
-      if (hasDirectOriginalNames && !hasEncryptedConsumptions) {
-        setShowOriginalNames(true);
-      } else if (hasEncryptedConsumptions) {
-        // Try to decrypt encrypted names
-        handleDecryptNames();
-      } else {
-        // Fallback: just toggle
-        setShowOriginalNames(true);
-      }
-    } else {
-      // Hide original names
-      setShowOriginalNames(false);
-    }
-  };
-
   return (
     <TabContent
       initial={{ opacity: 0, y: 20 }}
@@ -335,59 +266,6 @@ export const ConsumptionsTab: React.FC<ConsumptionsTabProps> = ({
       exit={{ opacity: 0, y: -20 }}
       transition={{ duration: 0.3 }}
     >
-      {/* Owner-only decryption section */}
-      {isOwner && consumptions.length > 0 && (
-        <DecryptionSection>
-          <DecryptionHeader>
-            <DecryptionTitle>
-              <Key size={20} />
-              Owner Identity Access
-            </DecryptionTitle>
-            <DecryptionControls>
-              <Button
-                variant={showOriginalNames ? 'danger' : 'secondary'}
-                size="sm"
-                onClick={handleToggleDisplay}
-                disabled={isDecrypting}
-              >
-                {isDecrypting ? (
-                  <>Decrypting...</>
-                ) : showOriginalNames ? (
-                  <><EyeOff size={16} /> Hide Original Names</>
-                ) : (
-                  <><Eye size={16} /> Show Original Names</>
-                )}
-              </Button>
-            </DecryptionControls>
-          </DecryptionHeader>
-
-          {decryptError && (
-            <WarningBanner
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-            >
-              <AlertTriangle size={20} color={pirateColors.danger} />
-              <WarningText style={{ color: pirateColors.danger }}>
-                {decryptError}
-              </WarningText>
-            </WarningBanner>
-          )}
-
-          {showOriginalNames && !decryptError && (
-            <WarningBanner
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-            >
-              <AlertTriangle size={20} color={pirateColors.warning} />
-              <WarningText>
-                Original names are currently visible. Make sure you're in a secure environment.
-              </WarningText>
-            </WarningBanner>
-          )}
-        </DecryptionSection>
-      )}
 
       <SectionTitle>🏴‍☠️ Recent Consumptions</SectionTitle>
       {consumptions.length === 0 ? (

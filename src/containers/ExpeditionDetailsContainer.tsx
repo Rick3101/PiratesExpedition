@@ -6,6 +6,7 @@ import { useItemConsumption } from '@/hooks/useItemConsumption';
 import { useAddPirateModal } from '@/hooks/useAddPirateModal';
 import { useConsumeItemModal } from '@/hooks/useConsumeItemModal';
 import { useAddItemModal } from '@/hooks/useAddItemModal';
+import { useNameDecryption } from '@/hooks/useNameDecryption';
 import { hapticFeedback, getUserId } from '@/utils/telegram';
 import { expeditionItemsService } from '@/services/api/expeditionItemsService';
 
@@ -31,18 +32,30 @@ export const ExpeditionDetailsContainer: React.FC<ExpeditionDetailsContainerProp
   const consumeItemModal = useConsumeItemModal();
   const addItemModal = useAddItemModal();
 
-  // Calculated values
-  const totalPirates = useMemo(() => {
-    if (!expedition) return 0;
-    return new Set(expedition.consumptions.map(c => c.pirate_name)).size;
-  }, [expedition]);
-
   // Check if current user is the expedition owner
   const currentUserId = getUserId();
   const isOwner = useMemo(() => {
     if (!expedition || !currentUserId) return false;
     return expedition.owner_chat_id === currentUserId;
   }, [expedition, currentUserId]);
+
+  // Decryption hook
+  const {
+    showOriginalNames,
+    decryptedMappings,
+    isDecrypting,
+    decryptError,
+    handleToggleDisplay,
+  } = useNameDecryption(
+    { expeditionId, isOwner },
+    pirateNames
+  );
+
+  // Calculated values
+  const totalPirates = useMemo(() => {
+    if (!expedition) return 0;
+    return new Set(expedition.consumptions.map(c => c.pirate_name)).size;
+  }, [expedition]);
 
   // Basic handlers
   const handleBack = () => {
@@ -156,6 +169,12 @@ export const ExpeditionDetailsContainer: React.FC<ExpeditionDetailsContainerProp
       itemQuality={addItemModal.itemQuality}
       addingItem={addItemModal.addingItem}
 
+      // Decryption state
+      showOriginalNames={showOriginalNames}
+      decryptedMappings={decryptedMappings}
+      isDecrypting={isDecrypting}
+      decryptError={decryptError}
+
       // Basic handlers
       onBack={handleBack}
       onEdit={handleEdit}
@@ -181,6 +200,9 @@ export const ExpeditionDetailsContainer: React.FC<ExpeditionDetailsContainerProp
       onSelectedItemIdChange={addItemModal.setSelectedItemId}
       onItemQuantityChange={addItemModal.setItemQuantity}
       onItemQualityChange={addItemModal.setItemQuality}
+
+      // Decryption handler
+      onToggleNameDecryption={handleToggleDisplay}
     />
   );
 };

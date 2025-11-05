@@ -40,6 +40,12 @@ interface ExpeditionDetailsPresenterProps {
   itemQuality: QualityGrade | '';
   addingItem: boolean;
 
+  // Decryption state
+  showOriginalNames?: boolean;
+  decryptedMappings?: Record<string, string>;
+  isDecrypting?: boolean;
+  decryptError?: string | null;
+
   // Handlers
   onBack?: () => void;
   onEdit: () => void;
@@ -59,6 +65,7 @@ interface ExpeditionDetailsPresenterProps {
   onSelectedItemIdChange: (id: number | null) => void;
   onItemQuantityChange: (quantity: number) => void;
   onItemQualityChange: (quality: QualityGrade | '') => void;
+  onToggleNameDecryption?: () => void;
 }
 
 const DetailsContainer = styled.div`
@@ -95,6 +102,32 @@ const ExpeditionTitle = styled.h1`
   @media (min-width: 640px) {
     font-size: 1.5rem;
   }
+`;
+
+const StatusEmojiButton = styled.span<{ $clickable?: boolean }>`
+  cursor: ${props => props.$clickable ? 'pointer' : 'default'};
+  transition: all 0.2s ease;
+  display: inline-flex;
+  position: relative;
+
+  ${props => props.$clickable && `
+    &:hover {
+      transform: scale(1.2);
+      filter: drop-shadow(0 2px 4px rgba(139, 69, 19, 0.3));
+    }
+
+    &:active {
+      transform: scale(1.05);
+    }
+  `}
+`;
+
+const KeyIndicator = styled.span`
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  font-size: 0.6em;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
 `;
 
 const StatusBadge = styled.span<{ $status: string }>`
@@ -328,6 +361,10 @@ export const ExpeditionDetailsPresenter: React.FC<ExpeditionDetailsPresenterProp
   itemQuantity,
   itemQuality,
   addingItem,
+  showOriginalNames,
+  decryptedMappings,
+  isDecrypting,
+  decryptError,
   onBack,
   onEdit,
   onRefresh,
@@ -346,6 +383,7 @@ export const ExpeditionDetailsPresenter: React.FC<ExpeditionDetailsPresenterProp
   onSelectedItemIdChange,
   onItemQuantityChange,
   onItemQualityChange,
+  onToggleNameDecryption,
 }) => {
   const tabs = [
     { id: 'overview', label: 'Overview', icon: <Activity size={16} /> },
@@ -438,6 +476,11 @@ export const ExpeditionDetailsPresenter: React.FC<ExpeditionDetailsPresenterProp
             expeditionId={expedition.id}
             isOwner={isOwner}
             ownerChatId={currentUserId}
+            showOriginalNames={showOriginalNames}
+            decryptedMappings={decryptedMappings || {}}
+            isDecrypting={isDecrypting}
+            decryptError={decryptError}
+            onToggleDisplay={onToggleNameDecryption}
           />
         );
 
@@ -448,6 +491,11 @@ export const ExpeditionDetailsPresenter: React.FC<ExpeditionDetailsPresenterProp
             onPaymentSuccess={onPaymentSuccess}
             isOwner={isOwner}
             expeditionId={expedition.id}
+            showOriginalNames={showOriginalNames}
+            decryptedMappings={decryptedMappings || {}}
+            isDecrypting={isDecrypting}
+            decryptError={decryptError}
+            onToggleDisplay={onToggleNameDecryption}
           />
         );
 
@@ -480,8 +528,42 @@ export const ExpeditionDetailsPresenter: React.FC<ExpeditionDetailsPresenterProp
             </div>
 
             <ExpeditionTitle>
-              {getStatusEmoji(expedition.status)} {expedition.name}
+              <StatusEmojiButton
+                $clickable={isOwner && !!onToggleNameDecryption}
+                onClick={() => {
+                  if (isOwner && onToggleNameDecryption) {
+                    onToggleNameDecryption();
+                  }
+                }}
+                title={
+                  isOwner && onToggleNameDecryption
+                    ? isDecrypting
+                      ? 'Decrypting names...'
+                      : showOriginalNames
+                      ? 'Click to hide original names'
+                      : 'Click to show original names'
+                    : 'Expedition status'
+                }
+              >
+                {getStatusEmoji(expedition.status)}
+                {isOwner && onToggleNameDecryption && <KeyIndicator>🔑</KeyIndicator>}
+              </StatusEmojiButton>
+              {expedition.name}
             </ExpeditionTitle>
+
+            {decryptError && (
+              <div style={{
+                background: `${pirateColors.danger}20`,
+                border: `2px solid ${pirateColors.danger}`,
+                borderRadius: '8px',
+                padding: spacing.md,
+                marginTop: spacing.md,
+                color: pirateColors.danger,
+                fontSize: pirateTypography.sizes.sm
+              }}>
+                {decryptError}
+              </div>
+            )}
 
             {expedition.description && (
               <ExpeditionDescription>{expedition.description}</ExpeditionDescription>
