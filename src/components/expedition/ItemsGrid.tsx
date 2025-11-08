@@ -26,6 +26,8 @@ interface ItemsGridProps {
   onItemEdit?: (item: Item) => void;
   onConsumeClick?: (item: Item) => void;
   className?: string;
+  showOriginalNames?: boolean;
+  decryptedItemMappings?: Record<string, string>;
 }
 
 const GridContainer = styled.div<{ $compact: boolean; $columns: number }>`
@@ -258,9 +260,23 @@ export const ItemsGrid: React.FC<ItemsGridProps> = ({
   onItemEdit,
   onConsumeClick,
   className,
+  showOriginalNames = false,
+  decryptedItemMappings = {},
 }) => {
   const displayItems = maxItems ? items.slice(0, maxItems) : items;
   const columns = compact ? Math.min(displayItems.length, 4) : Math.min(displayItems.length, 3);
+
+  // Helper function to get display name for items
+  const getDisplayItemName = (item: Item): string => {
+    if (showOriginalNames && decryptedItemMappings[item.name]) {
+      return decryptedItemMappings[item.name];
+    }
+    return item.name;
+  };
+
+  const hasOriginalItemName = (item: Item): boolean => {
+    return Boolean(decryptedItemMappings[item.name]);
+  };
 
   const formatCurrency = (value: number): string => {
     return new Intl.NumberFormat('pt-BR', {
@@ -343,8 +359,15 @@ export const ItemsGrid: React.FC<ItemsGridProps> = ({
                 {item.emoji || '📦'}
               </ItemIcon>
 
-              <ItemName $compact={compact}>
-                {item.name}
+              <ItemName
+                $compact={compact}
+                style={{
+                  color: showOriginalNames && hasOriginalItemName(item) ? pirateColors.warning : pirateColors.primary
+                }}
+              >
+                {showOriginalNames && hasOriginalItemName(item) && '🔓 '}
+                {getDisplayItemName(item)}
+                {!showOriginalNames && hasOriginalItemName(item) && ' 🔒'}
               </ItemName>
 
               <ItemQuantity $compact={compact}>

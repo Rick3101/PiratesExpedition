@@ -10,11 +10,14 @@ interface UseNameDecryptionOptions {
 interface UseNameDecryptionReturn {
   showOriginalNames: boolean;
   decryptedMappings: Record<string, string>;
+  decryptedItemMappings: Record<string, string>;
   isDecrypting: boolean;
   decryptError: string | null;
   handleToggleDisplay: () => void;
   getDisplayName: <T extends { pirate_name: string; original_name?: string }>(item: T) => string;
   hasOriginalName: <T extends { pirate_name: string; original_name?: string }>(item: T) => boolean;
+  getDisplayItemName: <T extends { product_name?: string; encrypted_product_name?: string }>(item: T) => string;
+  hasOriginalItemName: <T extends { product_name?: string; encrypted_product_name?: string }>(item: T) => boolean;
 }
 
 /**
@@ -42,6 +45,7 @@ export const useNameDecryption = <T extends { pirate_name: string; original_name
 
   const [showOriginalNames, setShowOriginalNames] = useState(false);
   const [decryptedMappings, setDecryptedMappings] = useState<Record<string, string>>({});
+  const [decryptedItemMappings, setDecryptedItemMappings] = useState<Record<string, string>>({});
   const [isDecrypting, setIsDecrypting] = useState(false);
   const [decryptError, setDecryptError] = useState<string | null>(null);
   const [ownerKey, setOwnerKey] = useState<string | null>(null);
@@ -64,6 +68,26 @@ export const useNameDecryption = <T extends { pirate_name: string; original_name
   // Check if item has original name (either from API or decrypted)
   const hasOriginalName = <T extends { pirate_name: string; original_name?: string }>(item: T): boolean => {
     return Boolean(item.original_name || decryptedMappings[item.pirate_name]);
+  };
+
+  // Get the display name for an item/product (decrypted if available and showOriginalNames is true)
+  const getDisplayItemName = <T extends { product_name?: string; encrypted_product_name?: string }>(item: T): string => {
+    const encryptedName = item.encrypted_product_name || item.product_name || '';
+
+    if (showOriginalNames && encryptedName) {
+      // Check decrypted item mappings first
+      if (decryptedItemMappings[encryptedName]) {
+        return decryptedItemMappings[encryptedName];
+      }
+    }
+    // Return encrypted name or product name
+    return encryptedName;
+  };
+
+  // Check if item has original item name (decrypted)
+  const hasOriginalItemName = <T extends { product_name?: string; encrypted_product_name?: string }>(item: T): boolean => {
+    const encryptedName = item.encrypted_product_name || item.product_name || '';
+    return Boolean(encryptedName && decryptedItemMappings[encryptedName]);
   };
 
   // Check if any items need decryption (have no original_name from API)
@@ -100,11 +124,22 @@ export const useNameDecryption = <T extends { pirate_name: string; original_name
 
       // Now decrypt with the owner key
       try {
+        // Decrypt pirate names
         const decrypted = await bramblerService.decryptNames(expeditionId, {
           owner_key: keyToUse
         });
 
         setDecryptedMappings(decrypted);
+
+        // Also decrypt item names
+        try {
+          const decryptedItems = await bramblerService.decryptItemNames(expeditionId, keyToUse);
+          setDecryptedItemMappings(decryptedItems);
+        } catch (itemError: any) {
+          console.warn('Failed to decrypt item names:', itemError);
+          // Don't fail the whole operation if item decryption fails
+        }
+
         setShowOriginalNames(true);
       } catch (error: any) {
         console.error('Failed to decrypt names:', error);
@@ -141,10 +176,13 @@ export const useNameDecryption = <T extends { pirate_name: string; original_name
   return {
     showOriginalNames,
     decryptedMappings,
+    decryptedItemMappings,
     isDecrypting,
     decryptError,
     handleToggleDisplay,
     getDisplayName,
     hasOriginalName,
+    getDisplayItemName,
+    hasOriginalItemName,
   };
 };

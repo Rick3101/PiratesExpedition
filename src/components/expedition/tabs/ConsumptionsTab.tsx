@@ -17,6 +17,7 @@ interface ConsumptionsTabProps {
   // Decryption props (passed from parent)
   showOriginalNames?: boolean;
   decryptedMappings?: Record<string, string>;
+  decryptedItemMappings?: Record<string, string>;
   isDecrypting?: boolean;
   decryptError?: string | null;
   onToggleDisplay?: () => void;
@@ -164,6 +165,7 @@ export const ConsumptionsTab: React.FC<ConsumptionsTabProps> = ({
   expeditionId: _expeditionId,
   showOriginalNames = false,
   decryptedMappings = {},
+  decryptedItemMappings = {},
 }) => {
   console.log('[ConsumptionsTab] Component rendering with', consumptions.length, 'consumptions');
   consumptions.forEach(c => {
@@ -172,7 +174,7 @@ export const ConsumptionsTab: React.FC<ConsumptionsTabProps> = ({
     console.log(`  [ConsumptionsTab] Names: pirate="${c.pirate_name}" original="${c.original_name}"`);
   });
 
-  // Helper functions for displaying names
+  // Helper functions for displaying pirate names
   const getDisplayName = <T extends { pirate_name: string; original_name?: string }>(item: T): string => {
     if (showOriginalNames) {
       // Check decrypted mappings first
@@ -189,6 +191,25 @@ export const ConsumptionsTab: React.FC<ConsumptionsTabProps> = ({
 
   const hasOriginalName = <T extends { pirate_name: string; original_name?: string }>(item: T): boolean => {
     return Boolean(item.original_name || decryptedMappings[item.pirate_name]);
+  };
+
+  // Helper functions for displaying item names
+  const getDisplayItemName = (consumption: ItemConsumption): string => {
+    const encryptedName = consumption.encrypted_product_name || consumption.product_name;
+
+    if (showOriginalNames && encryptedName) {
+      // Check decrypted item mappings first
+      if (decryptedItemMappings[encryptedName]) {
+        return decryptedItemMappings[encryptedName];
+      }
+    }
+    // Return encrypted name or product name
+    return encryptedName;
+  };
+
+  const hasOriginalItemName = (consumption: ItemConsumption): boolean => {
+    const encryptedName = consumption.encrypted_product_name || consumption.product_name;
+    return Boolean(encryptedName && decryptedItemMappings[encryptedName]);
   };
 
   const {
@@ -241,8 +262,14 @@ export const ConsumptionsTab: React.FC<ConsumptionsTabProps> = ({
                         {showOriginalNames && hasOriginalName(consumption) && '👤 '}
                         {getDisplayName(consumption)}
                       </ConsumptionPirate>
-                      <ConsumptionItem>
-                        {consumption.quantity}x {consumption.encrypted_product_name || consumption.product_name}
+                      <ConsumptionItem style={{
+                        color: showOriginalNames && hasOriginalItemName(consumption) ? pirateColors.warning : pirateColors.muted
+                      }}>
+                        {showOriginalNames && hasOriginalItemName(consumption) && '🔓 '}
+                        {consumption.quantity}x {getDisplayItemName(consumption)}
+                        {!showOriginalNames && consumption.encrypted_product_name && (
+                          <span style={{ marginLeft: '4px', fontSize: '0.8em' }}>🔒</span>
+                        )}
                       </ConsumptionItem>
                       <PaymentStatusBadge $status={consumption.payment_status}>
                         {consumption.payment_status}

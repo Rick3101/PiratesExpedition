@@ -43,6 +43,7 @@ export const ExpeditionDetailsContainer: React.FC<ExpeditionDetailsContainerProp
   const {
     showOriginalNames,
     decryptedMappings,
+    decryptedItemMappings,
     isDecrypting,
     decryptError,
     handleToggleDisplay,
@@ -172,6 +173,7 @@ export const ExpeditionDetailsContainer: React.FC<ExpeditionDetailsContainerProp
       // Decryption state
       showOriginalNames={showOriginalNames}
       decryptedMappings={decryptedMappings}
+      decryptedItemMappings={decryptedItemMappings}
       isDecrypting={isDecrypting}
       decryptError={decryptError}
 

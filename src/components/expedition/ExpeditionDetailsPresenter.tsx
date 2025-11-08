@@ -43,6 +43,7 @@ interface ExpeditionDetailsPresenterProps {
   // Decryption state
   showOriginalNames?: boolean;
   decryptedMappings?: Record<string, string>;
+  decryptedItemMappings?: Record<string, string>;
   isDecrypting?: boolean;
   decryptError?: string | null;
 
@@ -363,6 +364,7 @@ export const ExpeditionDetailsPresenter: React.FC<ExpeditionDetailsPresenterProp
   addingItem,
   showOriginalNames,
   decryptedMappings,
+  decryptedItemMappings,
   isDecrypting,
   decryptError,
   onBack,
@@ -465,6 +467,8 @@ export const ExpeditionDetailsPresenter: React.FC<ExpeditionDetailsPresenterProp
             items={expedition.items}
             onConsumeClick={onConsumeClick}
             onAddItem={onOpenAddItemModal}
+            showOriginalNames={showOriginalNames}
+            decryptedItemMappings={decryptedItemMappings || {}}
           />
         );
 
@@ -493,6 +497,7 @@ export const ExpeditionDetailsPresenter: React.FC<ExpeditionDetailsPresenterProp
             expeditionId={expedition.id}
             showOriginalNames={showOriginalNames}
             decryptedMappings={decryptedMappings || {}}
+            decryptedItemMappings={decryptedItemMappings || {}}
             isDecrypting={isDecrypting}
             decryptError={decryptError}
             onToggleDisplay={onToggleNameDecryption}
@@ -698,7 +703,7 @@ export const ExpeditionDetailsPresenter: React.FC<ExpeditionDetailsPresenterProp
                   </option>
                   {availableItems.map((item) => (
                     <option key={item.id} value={item.id}>
-                      {item.encrypted_item_name}
+                      {item.encrypted_item_name} {item.product_id ? `(Product #${item.product_id})` : '(No Product ID)'}
                     </option>
                   ))}
                 </Select>

@@ -1,6 +1,7 @@
 import React from 'react';
 import styled, { css } from 'styled-components';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { pirateColors, pirateTypography, spacing, mixins, media } from '@/utils/pirateTheme';
 import { formatUserDisplay, isAvailable as isTelegramAvailable } from '@/utils/telegram';
 import { websocketService } from '@/services/websocketService';
@@ -77,7 +78,13 @@ const HeaderTitle = styled(motion.div)`
 
 const HeaderIcon = styled.span`
   font-size: 2.5rem;
+  cursor: pointer;
+  transition: transform 0.2s ease;
   ${mixins.swayingShip}
+
+  &:hover {
+    transform: scale(1.1);
+  }
 
   ${media.sm(css`
     font-size: 3rem;
@@ -203,6 +210,7 @@ export const CaptainLayout: React.FC<CaptainLayoutProps> = ({
   showUserInfo = true,
   className,
 }) => {
+  const navigate = useNavigate();
   const [isWebSocketConnected, setIsWebSocketConnected] = React.useState(false);
 
   // Monitor real WebSocket connection status
@@ -244,7 +252,7 @@ export const CaptainLayout: React.FC<CaptainLayoutProps> = ({
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6 }}
             >
-              <HeaderIcon>⛵</HeaderIcon>
+              <HeaderIcon onClick={() => navigate('/')}>⛵</HeaderIcon>
               <HeaderTextGroup>
                 <Title>{title}</Title>
                 {subtitle && <Subtitle>{subtitle}</Subtitle>}

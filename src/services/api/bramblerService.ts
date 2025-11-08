@@ -164,11 +164,27 @@ class BramblerService {
    * Decrypt item names for a specific expedition
    */
   async decryptItemNames(expeditionId: number, ownerKey: string): Promise<Record<string, string>> {
-    const response = await httpClient.post<Record<string, string>>(
+    const response = await httpClient.post<{
+      count: number;
+      items: Array<{
+        encrypted_product_name: string;
+        original_product_name: string;
+      }>;
+    }>(
       `${this.basePath}/items/decrypt/${expeditionId}`,
       { owner_key: ownerKey }
     );
-    return response.data;
+
+    // Transform the array response into a mapping object
+    const mappings: Record<string, string> = {};
+
+    if (response.data.items && Array.isArray(response.data.items)) {
+      response.data.items.forEach((item) => {
+        mappings[item.encrypted_product_name] = item.original_product_name;
+      });
+    }
+
+    return mappings;
   }
 
   /**
@@ -256,6 +272,7 @@ export interface EncryptedItem {
   id: number;
   expedition_id: number;
   expedition_name: string;
+  product_id?: number; // Product ID for linking back to products table
   original_item_name: string | null; // Always null for security
   encrypted_item_name: string;
   encrypted_mapping: string;
@@ -273,6 +290,7 @@ export interface EncryptedItem {
  */
 export interface BramblerCreateItemRequest {
   expedition_id: number;
+  product_id?: number; // Product ID to link the encrypted item to a product
   original_item_name: string;
   encrypted_name?: string; // Optional - will be auto-generated if not provided
   owner_key: string;

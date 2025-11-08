@@ -313,13 +313,22 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
 
       hapticFeedback('medium');
 
+      console.log('[AddItemModal] Creating encrypted item for product:', {
+        productId: formData.productId,
+        productName: selectedProduct.name,
+        encryptedName: formData.useCustomName ? formData.encryptedName.trim() : 'auto-generated'
+      });
+
       const result = await bramblerService.createEncryptedItem({
         expedition_id: GLOBAL_MAPPING_EXPEDITION_ID, // Dummy expedition for global mapping
+        product_id: formData.productId, // Link to the product
         original_item_name: selectedProduct.name,
         encrypted_name: formData.useCustomName ? formData.encryptedName.trim() : undefined,
         owner_key: masterKey,
         item_type: formData.itemType
       });
+
+      console.log('[AddItemModal] Encrypted item created:', result.item);
 
       if (result.success) {
         hapticFeedback('success');

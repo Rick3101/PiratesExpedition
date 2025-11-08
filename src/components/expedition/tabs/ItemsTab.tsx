@@ -13,6 +13,8 @@ interface ItemsTabProps {
   items: ExpeditionItem[];
   onConsumeClick: (item: any) => void;
   onAddItem: () => void;
+  showOriginalNames?: boolean;
+  decryptedItemMappings?: Record<string, string>;
 }
 
 const TabContent = styled(motion.div)`
@@ -41,6 +43,8 @@ export const ItemsTab: React.FC<ItemsTabProps> = ({
   items,
   onConsumeClick,
   onAddItem,
+  showOriginalNames = false,
+  decryptedItemMappings = {},
 }) => {
   const transformedItems = transformExpeditionItems(items);
 
@@ -63,6 +67,8 @@ export const ItemsTab: React.FC<ItemsTabProps> = ({
         showProgress
         compact={false}
         onConsumeClick={onConsumeClick}
+        showOriginalNames={showOriginalNames}
+        decryptedItemMappings={decryptedItemMappings}
       />
       {/* Debug info - shows item availability data */}
       <ItemDebugInfo items={transformedItems} position="bottom-right" />
